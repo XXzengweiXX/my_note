@@ -1,6 +1,6 @@
 # 核心模块说明(/etc/nginx/nginx.conf)
 
-```ng
+```nginx
 user www;#配置用户或者用户组
 worker_processes 4;#允许生成的进程数,默认1;
 pid /run/nginx.pid;#指定 nginx 进程运行文件存放地址
@@ -35,3 +35,80 @@ http{
 }
 
 ```
+
+# 负载均衡
+
+1. 轮询(默认)
+
+```nginx
+upstream backserver {
+    server 192.168.0.14;
+    server 192.168.0.15;
+}
+server {
+       listen 80;
+        location / {
+           proxy_pass http://backserver;
+       }
+    }
+```
+
+2. 比重
+
+> 权重越高，在被访问的概率越大,可能出现丢失登陆信息的问题
+
+```nginx
+upstream backserver {
+    server 192.168.0.14 weight=3;
+    server 192.168.0.15 weight=7;
+}
+```
+
+3. ip_hash
+
+> 每个请求按访问ip的hash结果分配，这样每个访客固定访问一个后端服务器，可以解决session的问题
+
+```nginx
+upstream backserver {
+    ip_hash;
+    server 192.168.0.14:88;
+    server 192.168.0.15:80;
+}
+```
+
+4. fair
+
+> 按后端服务器的响应时间来分配请求，响应时间短的优先分配。
+
+```nginx
+upstream backserver {
+    server server1;
+    server server2;
+    fair;
+}
+```
+
+5. url_hash
+
+> 按访问url的hash结果来分配请求，使每个url定向到同一个后端服务器，后端服务器为缓存时比较有效。
+
+```nginx
+upstream somestream {
+    hash $request_uri;
+    server 192.168.244.1:8080;
+    server 192.168.244.2:8080;
+    server 192.168.244.3:8080;
+    server 192.168.244.4:8080;
+ 
+}
+server {
+    listen 8081 default;
+    server_name test.csdn.net;
+    charset utf-8;
+    location /get {
+    proxy_pass http://somestream;
+ 
+    }  
+}
+```
+
